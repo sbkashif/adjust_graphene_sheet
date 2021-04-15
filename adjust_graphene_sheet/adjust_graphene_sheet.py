@@ -37,6 +37,10 @@ def adjust_coordinates(filename="graphene.gro", outfile="graphene_adjusted.gro")
                 coord.append([parts[0],parts[1],parts[2],float(parts[3]),float(parts[4]), float(parts[5])])
             elif len(parts)==3:
                 box.append([parts[0],parts[1], parts[2]])
+
+    box_x=float(box[0][0])
+    box_y=float(box[0][1])
+    print(box_x,box_y)
     labels=["resid","atom_type","index","x","y","z"]
     df=pd.DataFrame(coord,columns=labels)
     df.astype({'x': 'float64'}).dtypes
@@ -56,14 +60,24 @@ def adjust_coordinates(filename="graphene.gro", outfile="graphene_adjusted.gro")
     print("Max_x,Max_y",max_x,max_y)
     
     print(df)
+
+    #Calculate the periodic distance between
+    #first atom and last atom
+
+    dist_x=box_x-max_x
+
+    dist_y=box_y-max_y
+   
+    print(dist_x,dist_y) 
     
     #Calculating the shift for x
     order_y=df.sort_values(by=['y','x'])
     order_y['dx']=-order_y['x']+order_y['x'].shift(-1)
     ref_x=order_y.loc[order_y['y']==0,'dx']
     ref_x.drop(ref_x.tail(1).index,inplace=True)
-    avg_x=ref_x.mean()
-    shift_x=avg_x
+    print(ref_x)
+    last_x=ref_x.iloc[-1]
+    shift_x=last_x-dist_x
     #print(ref_x,count_x)
     
 
@@ -74,18 +88,16 @@ def adjust_coordinates(filename="graphene.gro", outfile="graphene_adjusted.gro")
     ref_y=order_x.loc[order_x['x']==0,'dy']
     ref_y.drop(ref_y.tail(1).index,inplace=True)
     print(ref_y)
-    avg_y=ref_y.iloc[1]
-    count_y=ref_y.count()+1
-    shift_y=avg_y
+    last_y=ref_y.iloc[-2]
+    shift_y=last_y-dist_y
     
-    print("Total shift needed",avg_x,avg_y)
     print("Per atom shift",shift_x,shift_y)
     
     #df.loc[(df['y'] != 0.0) & (df['x'] !=0.0), 'x']=df['x']-shift_x
     #df.loc[(df['x'] != 0.0) & (df['y'] !=0.0), 'y']=df['y']-shift_y
     
-    df.loc[(df['x'] != 0.0), 'x']=df['x']-shift_x
-    #df.loc[(df['y'] != 0.0), 'y']=df['y']-shift_y
+    df.loc[(df['x'] != 0.0), 'x']=df['x']+dist_x
+    df.loc[(df['y'] != 0.0), 'y']=df['y']+dist_y
     
 
     min_x=df['x'].min()
